@@ -1,8 +1,8 @@
 package com.maxdemarzi.schema;
 
 import com.maxdemarzi.results.StringResult;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.procedure.Context;
 import org.neo4j.procedure.Description;
 import org.neo4j.procedure.Mode;
@@ -24,7 +24,7 @@ import static org.apache.tika.parser.ner.NERecogniser.TIME;
 public class Schema {
 
     @Context
-    public GraphDatabaseService db;
+    public Transaction tx;
 
     public static final Map<String, Label> LABELS = new HashMap<String, Label>() {{
         put(PERSON, Label.label("Person"));
@@ -42,7 +42,7 @@ public class Schema {
 
     public Stream<StringResult> generate() throws IOException {
 
-        org.neo4j.graphdb.schema.Schema schema = db.schema();
+        org.neo4j.graphdb.schema.Schema schema = tx.schema();
         if (!schema.getConstraints(Labels.Document).iterator().hasNext()) {
             schema.constraintFor(Labels.Document)
                     .assertPropertyIsUnique("id")

@@ -7,7 +7,6 @@ import com.maxdemarzi.schema.Schema;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.sax.BodyContentHandler;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
@@ -31,13 +30,13 @@ public class IngestDocumentCallable implements Callable {
 
     private String file;
     private String language;
-    private GraphDatabaseService db;
+    private Transaction tx;
     private Log log;
 
-    public IngestDocumentCallable(String file, String language, GraphDatabaseService db, Log log) {
+    public IngestDocumentCallable(String file, String language, Transaction tx, Log log) {
         this.file = file;
         this.language = language;
-        this.db = db;
+        this.tx = tx;
         this.log = log;
     }
 
@@ -70,28 +69,25 @@ public class IngestDocumentCallable implements Callable {
                 recognized = new HashMap<>();
         }
 
-        try(Transaction tx = db.beginTx() ) {
-            Node document = db.createNode(Labels.Document);
-            document.setProperty("text", text);
-            document.setProperty("file", file);
-            document.setProperty("language", language);
-            nodes.add(document);
+        Node document = this.tx.createNode(Labels.Document);
+        document.setProperty("text", text);
+        document.setProperty("file", file);
+        document.setProperty("language", language);
+        nodes.add(document);
 
-            // Connect the document to each entity found in each group of entities
-            for (Map.Entry<String, Set<String>> entry : recognized.entrySet()) {
-                Label label = Schema.LABELS.get(entry.getKey());
-                for (String value : entry.getValue()) {
-                    Node entity = db.findNode(label, "id", value);
-                    if (entity == null) {
-                        entity = db.createNode(label);
-                        entity.setProperty("id", value);
-                    }
-                    nodes.add(entity);
-                    Relationship has = document.createRelationshipTo(entity, RelationshipTypes.HAS);
-                    relationships.add(has);
+        // Connect the document to each entity found in each group of entities
+        for (Map.Entry<String, Set<String>> entry : recognized.entrySet()) {
+            Label label = Schema.LABELS.get(entry.getKey());
+            for (String value : entry.getValue()) {
+                Node entity = this.tx.findNode(label, "id", value);
+                if (entity == null) {
+                    entity = this.tx.createNode(label);
+                    entity.setProperty("id", value);
                 }
+                nodes.add(entity);
+                Relationship has = document.createRelationshipTo(entity, RelationshipTypes.HAS);
+                relationships.add(has);
             }
-            tx.success();
         }
         return new GraphResult(nodes, relationships);
     }

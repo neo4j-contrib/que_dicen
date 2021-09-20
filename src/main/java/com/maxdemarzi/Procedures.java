@@ -3,6 +3,7 @@ package com.maxdemarzi;
 import com.maxdemarzi.ingest.IngestDocumentCallable;
 import com.maxdemarzi.results.GraphResult;
 import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.logging.Log;
 import org.neo4j.procedure.Context;
 import org.neo4j.procedure.Description;
@@ -19,6 +20,9 @@ public class Procedures {
     @Context
     public GraphDatabaseService db;
 
+    @Context
+    public Transaction tx;
+
     // This gives us a log instance that outputs messages to the
     // standard log, normally found under `data/log/console.log`
     @Context
@@ -27,14 +31,14 @@ public class Procedures {
     @Procedure(name = "com.maxdemarzi.en.ingest", mode = Mode.WRITE)
     @Description("CALL com.maxdemarzi.en.ingest")
     public Stream<GraphResult> IngestEnglishDocument(@Name("file") String file) throws Exception {
-        IngestDocumentCallable callable = new IngestDocumentCallable(file, "English", db, log);
+        IngestDocumentCallable callable = new IngestDocumentCallable(file, "English", tx, log);
         return Stream.of(callable.call());
     }
 
     @Procedure(name = "com.maxdemarzi.es.ingest", mode = Mode.WRITE)
     @Description("CALL com.maxdemarzi.es.ingest")
     public Stream<GraphResult> IngestSpanishDocument(@Name("file") String file) throws InterruptedException {
-        IngestDocumentCallable callable = new IngestDocumentCallable(file, "Spanish", db, log);
+        IngestDocumentCallable callable = new IngestDocumentCallable(file, "Spanish", tx, log);
         return Stream.of(callable.call());
     }
 }
